@@ -2,6 +2,7 @@ package fo
 
 import (
 	"bufio"
+	"container/list"
 	"io"
 	"log"
 	"math/rand"
@@ -43,11 +44,11 @@ func WriteContent(filePath string, content string) {
 // - array with read strings
 // - isEndOfFile read boolean
 func ReadNextChunck(readStream *bufio.Reader, chunkSize int) ([]string, bool) {
-	linesRead := make([]string, chunkSize/2, chunkSize)
+
 	currentReadSize := 0
-	index := 0
 	eofReached := false
 
+	list := list.New()
 	for chunkSize > currentReadSize {
 		readLine, isPrefix, err := readStream.ReadLine()
 		if err != nil {
@@ -66,9 +67,17 @@ func ReadNextChunck(readStream *bufio.Reader, chunkSize int) ([]string, bool) {
 		}
 		lineLen := len(readLine)
 		currentReadSize += lineLen
-		linesRead[index] = string(readLine)
+		list.PushBack(string(readLine))
+	}
+
+	linesRead := make([]string, list.Len())
+	index := 0
+
+	for iterator := list.Front(); iterator != nil; iterator = iterator.Next() {
+		linesRead[index] = iterator.Value.(string)
 		index++
 	}
+
 	return linesRead, eofReached
 }
 
