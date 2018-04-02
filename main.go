@@ -59,19 +59,19 @@ func main() {
 	//start merge sorting
 	mergeSortFiles(sortedFilesDir, canLoadInMemory, chunkFileSize)
 
-	// startSortingNextFiles()
 	fmt.Println("Done Sorting: ", time.Since(start))
 }
 
 func mergeSortFiles(sortedFilesDir string, canLoadInMemory int, chunkFileSize int) {
 
 	files, err := ioutil.ReadDir(sortedFilesDir)
-	if len(files) == 1 {
-		return
-	}
 	if err != nil {
 		log.Fatal(err)
 	}
+	if len(files) == 1 {
+		return
+	}
+
 	loadedIndex := 0
 	filesToMerge := make([]string, canLoadInMemory)
 
@@ -80,7 +80,7 @@ func mergeSortFiles(sortedFilesDir string, canLoadInMemory int, chunkFileSize in
 		loadedIndex++
 		if loadedIndex >= canLoadInMemory || index == len(files)-1 {
 			loadedIndex = 0
-			startSortingNextFiles(filesToMerge, chunkFileSize)
+			mergeFiles(filesToMerge, chunkFileSize)
 			filesToMerge = make([]string, canLoadInMemory)
 		}
 	}
@@ -95,19 +95,24 @@ type streamHandler struct {
 	fileName   string
 }
 
-func startSortingNextFiles(filePaths []string, chunkFileSize int) {
+func mergeFiles(filePaths []string, chunkFileSize int) {
 	inMemorySortedFiles := make(map[int][]string)
 	openFileHandles := make(map[int]streamHandler)
+
 	for index, currentFile := range filePaths {
 		if currentFile != "" {
-			fmt.Println(currentFile)
+
+			//open handles on files that should be merged
 			inputFileHandle, err := os.Open(currentFile)
 			if err != nil {
 				log.Fatal(err)
 			}
 			readStream := bufio.NewReader(inputFileHandle)
+
+			// save opened handles so we can close them later on
 			openFileHandles[index] = streamHandler{inputFileHandle, err, readStream, currentFile}
 
+			// load initial file buffers
 			linesRead, eof := fo.ReadNextChunck(readStream, chunkFileSize)
 			inMemorySortedFiles[index] = linesRead
 
@@ -119,21 +124,22 @@ func startSortingNextFiles(filePaths []string, chunkFileSize int) {
 
 	currentIndecies := make([]int, len(inMemorySortedFiles))
 	sortedFileContentBuffer := make([]string, chunkFileSize)
-
+	initialBufferCapacity := chunkFileSize
 	bufferCounter := 0
+
 	for {
 		minElement := chooseMinElement(inMemorySortedFiles, currentIndecies)
 		if minElement == "" {
 			flushToFile(&sortedFileContentBuffer, chunkFileSize, &bufferCounter)
 			break
-		}
-		if len(sortedFileContentBuffer) > cap(sortedFileContentBuffer) {
+		} else if len(sortedFileContentBuffer) > initialBufferCapacity {
 			flushToFile(&sortedFileContentBuffer, chunkFileSize, &bufferCounter)
 		}
 		sortedFileContentBuffer[bufferCounter] = minElement
 		bufferCounter++
 	}
 
+	// close open file handles and delete merged files
 	for _, value := range openFileHandles {
 		value.fileHandle.Close()
 		os.Remove(value.fileName)
