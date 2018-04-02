@@ -3,6 +3,7 @@ package fo
 import (
 	"bufio"
 	"container/list"
+	"fmt"
 	"io"
 	"log"
 	"math/rand"
@@ -27,6 +28,7 @@ func GenerateTestFile(outFileName string, mb int) {
 
 // WriteContent will create file if it doesn't exist and will write passed content
 func WriteContent(filePath string, content string) {
+	// createFile(filePath)
 	fileHandle, openFileErr := os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 
 	_, err := fileHandle.Write([]byte(content))
@@ -38,6 +40,22 @@ func WriteContent(filePath string, content string) {
 	if openFileErr != nil {
 		log.Fatal(openFileErr)
 	}
+}
+
+func createFile(filePath string) {
+	// detect if file exists
+	var _, err = os.Stat(filePath)
+
+	// create file if not exists
+	if os.IsNotExist(err) {
+		var file, err = os.Create(filePath)
+		if err == nil {
+			return
+		}
+		defer file.Close()
+	}
+
+	fmt.Println("==> done creating file", filePath)
 }
 
 // ReadNextChunck reads the specified "chunkSize" from the stream and returns:
@@ -67,6 +85,7 @@ func ReadNextChunck(readStream *bufio.Reader, chunkSize int) ([]string, bool) {
 		}
 		lineLen := len(readLine)
 		currentReadSize += lineLen
+
 		list.PushBack(string(readLine))
 	}
 
@@ -89,14 +108,15 @@ func getRandText(mb int) string {
 	for i := 0; i < fileLen; i++ {
 		randomLength := rand.Intn(100) // ~50 bytes
 		if randomLength != 0 {
-			res = append(res, generateRandomString(randomLength))
+			res = append(res, GenerateRandomString(randomLength))
 		}
 	}
 
 	return strings.Join(res, "")
 }
 
-func generateRandomString(n int) string {
+// GenerateRandomString returns a random string using english letters only "n" characters long
+func GenerateRandomString(n int) string {
 	alphabet := []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 	charArr := make([]rune, n+1)
 
