@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"container/list"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -23,7 +24,11 @@ var sortedFilesDir = path.Join(pwd, "out")
 // use merge sort for generating the sorted inputFile
 func main() {
 	defer func() {
-		fmt.Println("Main crashed with: ", recover())
+		defer func() {
+			if err := recover(); err != nil {
+				log.Fatal(err)
+			}
+		}()
 	}()
 
 	start := time.Now()
@@ -39,7 +44,9 @@ func main() {
 	fileIndex := 0
 
 	for {
-		linesRead, eof := fo.ReadNextChunck(readStream, chunkFileSize)
+		list, eof := fo.ReadNextChunck(readStream, chunkFileSize)
+
+		linesRead := listToArray(list)
 		sort.Strings(linesRead)
 		sortedFileContent := strings.Join(linesRead, "\n")
 		outFile := path.Join(sortedFilesDir, strconv.Itoa(fileIndex)+".txt")
@@ -60,6 +67,18 @@ func main() {
 	mergeSortFiles(sortedFilesDir, canLoadInMemory, chunkFileSize)
 
 	fmt.Println("Done Sorting: ", time.Since(start))
+}
+
+func listToArray(list *list.List) []string {
+	index := 0
+
+	linesRead := make([]string, list.Len())
+	for iterator := list.Front(); iterator != nil; iterator = iterator.Next() {
+		linesRead[index] = iterator.Value.(string)
+		index++
+	}
+
+	return linesRead
 }
 
 func mergeSortFiles(sortedFilesDir string, canLoadInMemory int, chunkFileSize int) {
@@ -93,12 +112,19 @@ type streamHandler struct {
 	err        error
 	readStream *bufio.Reader
 	fileName   string
+	endOfFile  *bool
+}
+
+type fileHandler struct {
+	element  *string
+	iterator *list.Element
 }
 
 func mergeFiles(filePaths []string, chunkFileSize int) {
-	inMemorySortedFiles := make(map[int][]string)
+	inMemorySortedFiles := make(map[int]*list.List)
 	openFileHandles := make(map[int]streamHandler)
 
+	comparedTuppleElements := make(map[int]fileHandler)
 	for index, currentFile := range filePaths {
 		if currentFile != "" {
 
@@ -109,30 +135,28 @@ func mergeFiles(filePaths []string, chunkFileSize int) {
 			}
 			readStream := bufio.NewReader(inputFileHandle)
 
-			// save opened handles so we can close them later on
-			openFileHandles[index] = streamHandler{inputFileHandle, err, readStream, currentFile}
-
 			// load initial file buffers
-			linesRead, eof := fo.ReadNextChunck(readStream, chunkFileSize)
-			inMemorySortedFiles[index] = linesRead
-
+			list, eof := fo.ReadNextChunck(readStream, chunkFileSize)
+			inMemorySortedFiles[index] = list
+			firstElement := list.Front().Value.(string)
+			comparedTuppleElements[index] = fileHandler{&firstElement, list.Front()}
+			// save opened handles so we can close them later on
+			openFileHandles[index] = streamHandler{inputFileHandle, err, readStream, currentFile, &eof}
 			if eof {
 				continue
 			}
 		}
 	}
 
-	currentIndecies := make([]int, len(inMemorySortedFiles))
 	sortedFileContentBuffer := make([]string, chunkFileSize)
-	initialBufferCapacity := chunkFileSize
 	bufferCounter := 0
 
 	for {
-		minElement := chooseMinElement(inMemorySortedFiles, currentIndecies)
-		if minElement == "" {
+		minElement, filesEndReached := chooseMinElement(&inMemorySortedFiles, &comparedTuppleElements, &openFileHandles, chunkFileSize)
+		if minElement == "" || filesEndReached {
 			flushToFile(&sortedFileContentBuffer, chunkFileSize, &bufferCounter)
 			break
-		} else if len(sortedFileContentBuffer) > initialBufferCapacity {
+		} else if bufferCounter >= chunkFileSize {
 			flushToFile(&sortedFileContentBuffer, chunkFileSize, &bufferCounter)
 		}
 		sortedFileContentBuffer[bufferCounter] = minElement
@@ -154,22 +178,43 @@ func flushToFile(sortedFileContentBuffer *[]string, chunkFileSize int, bufferCou
 	*bufferCounter = 0
 }
 
-func chooseMinElement(inMemorySortedFiles map[int][]string, currentIndecies []int) string {
+func chooseMinElement(inMemorySortedFiles *map[int]*list.List, comparedTuppleElements *map[int]fileHandler, openFileHandles *map[int]streamHandler, chunkFileSize int) (string, bool) {
 	minElement := ""
-	minElementIndex := 0
-	for i := 0; i < len(currentIndecies); i++ {
-		currentArrayLen := len(inMemorySortedFiles[i])
-		currentIndex := currentIndecies[i]
-		if currentIndex < currentArrayLen {
-			currentElement := inMemorySortedFiles[i][currentIndex]
+	minFileIndex := 0
+	filesEndReached := true
+	for currentFileIndex, currentValue := range *comparedTuppleElements {
 
-			if currentElement < minElement || minElement == "" {
-				minElement = currentElement
-				minElementIndex = i
+		// if element is empty try to lazy load more values from file
+		if *currentValue.element == "" {
+			list, eofReached := fo.ReadNextChunck((*openFileHandles)[currentFileIndex].readStream, chunkFileSize)
+			if eofReached && list.Len() <= 0 {
+				continue
+			}
+
+			nextElement := list.Front()
+			if nextElement != nil {
+				*(*comparedTuppleElements)[currentFileIndex].iterator = *nextElement
+				*(*comparedTuppleElements)[currentFileIndex].element = nextElement.Value.(string)
+			} else {
+				*(*comparedTuppleElements)[currentFileIndex].element = ""
+			}
+		}
+
+		if *(*comparedTuppleElements)[currentFileIndex].element != "" {
+			filesEndReached = false
+			if *currentValue.element < minElement || minElement == "" {
+				minElement = *currentValue.element
+				minFileIndex = currentFileIndex
 			}
 		}
 	}
 
-	currentIndecies[minElementIndex]++
-	return minElement
+	nextElement := (*comparedTuppleElements)[minFileIndex].iterator.Next()
+	if nextElement != nil {
+		*(*comparedTuppleElements)[minFileIndex].iterator = *nextElement
+		*(*comparedTuppleElements)[minFileIndex].element = nextElement.Value.(string)
+	} else {
+		*(*comparedTuppleElements)[minFileIndex].element = ""
+	}
+	return minElement, filesEndReached
 }

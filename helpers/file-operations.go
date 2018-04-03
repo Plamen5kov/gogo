@@ -61,7 +61,7 @@ func createFile(filePath string) {
 // ReadNextChunck reads the specified "chunkSize" from the stream and returns:
 // - array with read strings
 // - isEndOfFile read boolean
-func ReadNextChunck(readStream *bufio.Reader, chunkSize int) ([]string, bool) {
+func ReadNextChunck(readStream *bufio.Reader, chunkSize int) (*list.List, bool) {
 
 	currentReadSize := 0
 	eofReached := false
@@ -89,15 +89,7 @@ func ReadNextChunck(readStream *bufio.Reader, chunkSize int) ([]string, bool) {
 		list.PushBack(string(readLine))
 	}
 
-	linesRead := make([]string, list.Len())
-	index := 0
-
-	for iterator := list.Front(); iterator != nil; iterator = iterator.Next() {
-		linesRead[index] = iterator.Value.(string)
-		index++
-	}
-
-	return linesRead, eofReached
+	return list, eofReached
 }
 
 // unexported methods
