@@ -15,6 +15,7 @@ var outputDir = path.Join(pwd, "out")
 
 // read  chuncks from the inputFile, sort and write them into separate files
 // merge generated sorted files into one
+//TODO: find a framework for testing golang
 func main() {
 	defer func() {
 		if err := recover(); err != nil {
