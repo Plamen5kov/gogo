@@ -42,22 +42,6 @@ func WriteContent(filePath string, content string) {
 	}
 }
 
-func createFile(filePath string) {
-	// detect if file exists
-	var _, err = os.Stat(filePath)
-
-	// create file if not exists
-	if os.IsNotExist(err) {
-		var file, err = os.Create(filePath)
-		if err == nil {
-			return
-		}
-		defer file.Close()
-	}
-
-	fmt.Println("==> done creating file", filePath)
-}
-
 // ReadNextChunck reads the specified "chunkSize" from the stream and returns:
 // - array with read strings
 // - isEndOfFile read boolean
@@ -92,6 +76,35 @@ func ReadNextChunck(readStream *bufio.Reader, chunkSize int) (*list.List, bool) 
 	return list, eofReached
 }
 
+// GenerateRandomString returns a random string using english letters only "n" characters long
+func GenerateRandomString(n int) string {
+	alphabet := []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+	charArr := make([]rune, n+1)
+
+	for i := 0; i < n; i++ {
+		charArr[i] = alphabet[rand.Intn(len(alphabet))]
+	}
+	charArr[n] = '\n'
+
+	return string(charArr)
+}
+
+func createFile(filePath string) {
+	// detect if file exists
+	var _, err = os.Stat(filePath)
+
+	// create file if not exists
+	if os.IsNotExist(err) {
+		var file, err = os.Create(filePath)
+		if err == nil {
+			return
+		}
+		defer file.Close()
+	}
+
+	fmt.Println("==> done creating file", filePath)
+}
+
 // unexported methods
 func getRandText(mb int) string {
 	var res []string
@@ -105,17 +118,4 @@ func getRandText(mb int) string {
 	}
 
 	return strings.Join(res, "")
-}
-
-// GenerateRandomString returns a random string using english letters only "n" characters long
-func GenerateRandomString(n int) string {
-	alphabet := []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
-	charArr := make([]rune, n+1)
-
-	for i := 0; i < n; i++ {
-		charArr[i] = alphabet[rand.Intn(len(alphabet))]
-	}
-	charArr[n] = '\n'
-
-	return string(charArr)
 }

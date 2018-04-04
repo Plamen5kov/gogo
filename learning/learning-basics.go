@@ -1,26 +1,27 @@
-package asd
+package main
 
 import (
+	"net/http"
 	"strconv"
 	"time"
-	"net/http"
 	// "strconv"
+	"fmt"
 	"io/ioutil"
 	"log"
-	"fmt"
-	"os"
 	"math"
+	"os"
 )
-func main () {
+
+func main() {
 	// presAge := make(map[string] int) // map init
 
-	//exception handling 
+	//exception handling
 	// excHandling(1/0)
 
 	//pointers
 	// num := 2
 	// refChange(&num)
-	
+
 	//creating pointers
 	// var ptrVal *int = new(int)
 	// fmt.Println("ptrVal=", ptrVal, " *ptrVal=", *ptrVal)
@@ -40,7 +41,7 @@ func main () {
 	// fmt.Println("Rectangle area: ", getArea(rect))
 	// fmt.Println("Circle area: ", getArea(circle))
 
-	// OPERATIONS 
+	// OPERATIONS
 	// testString := "hello world!"
 	// fmt.Println(strings.Contains(testString, "lo"))
 	// fmt.Println(strings.Index(testString, "lo"))
@@ -95,9 +96,9 @@ func main () {
 	// }
 }
 
-var pizzaNum = 0;
+var pizzaNum = 0
 
-func makeDough (stringChan chan string) {
+func makeDough(stringChan chan string) {
 	pizzaNum++
 	pizzaName := "Pizza #" + strconv.Itoa(pizzaNum)
 	fmt.Println("Make Dough and send for Sauce")
@@ -107,8 +108,8 @@ func makeDough (stringChan chan string) {
 	time.Sleep(time.Millisecond * 10)
 }
 
-func addSauce (stringChan chan string) {
-	pizza := <- stringChan
+func addSauce(stringChan chan string) {
+	pizza := <-stringChan
 	fmt.Println("Add sauce and send ", pizza)
 
 	stringChan <- pizza
@@ -116,17 +117,17 @@ func addSauce (stringChan chan string) {
 	time.Sleep(time.Millisecond * 10)
 }
 
-func addToppings (stringChan chan string) {
-	pizza := <- stringChan
+func addToppings(stringChan chan string) {
+	pizza := <-stringChan
 	fmt.Println("Add toppings to ", pizza)
 
 	time.Sleep(time.Millisecond * 10)
 }
 
-func count (id int) {
+func count(id int) {
 	for i := 0; i < 10; i++ {
 		// defer func() {
-			fmt.Println(id, ":", i)
+		fmt.Println(id, ":", i)
 		// }()
 	}
 
@@ -141,15 +142,19 @@ func hiHandler(responceWriter http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(responceWriter, "Hi back at you!\n")
 }
 func createAndReadFile(fileName, fileContent string) string {
-	
+
 	file, err := os.Create(fileName)
-	if err != nil {log.Fatal(err)}
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	file.WriteString(fileContent)
 	file.Close()
 
 	stream, err := ioutil.ReadFile(fileName)
-	if err != nil { log.Fatal(err) }
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	return string(stream)
 }
@@ -163,10 +168,10 @@ type Circle struct {
 }
 
 type Rectangle struct {
-	leftX float64
-	topY float64
+	leftX  float64
+	topY   float64
 	height float64
-	width float64
+	width  float64
 }
 
 func (rect Rectangle) area() float64 {
