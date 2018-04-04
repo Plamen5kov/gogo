@@ -25,7 +25,7 @@ func main() {
 	//TODO: get these values from a configuration file relative to main.exe
 	chunkFileSize := 5 * 1024 * 1024
 	availableMemory := 70 * 1024 * 1024 // the hard drive works with 35mb/s read/write so about 70mb of operational memmory should be close to optimal
-	inputFilePath := "./bigFile.txt"
+	inputFilePath := "./input/bigFile.txt"
 
 	// fileoperations.GenerateTestFile(50 /*~mb*/)
 
